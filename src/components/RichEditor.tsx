@@ -1,23 +1,33 @@
 import DOMPurify from "dompurify";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-const FONTS = [
-  { label: "DM Sans", fontName: "DM Sans" },
-  { label: "Mono", fontName: "Courier New" },
-  { label: "System", fontName: "Segoe UI" },
-  { label: "Times", fontName: "Times New Roman" },
-] as const;
+import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type Props = {
   initialHtml: string;
   onDraftChange: (html: string) => void;
   readOnly: boolean;
   editorKey: string;
+  embedded?: boolean;
+  onMicToggle?: () => void;
+  isRecording?: boolean;
+  toolbarHost?: HTMLElement | null;
+  bodyPlaceholder?: string;
+  showBodyPlaceholder?: boolean;
 };
 
-export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: Props) {
+export function RichEditor({
+  initialHtml,
+  onDraftChange,
+  readOnly,
+  editorKey,
+  embedded = false,
+  onMicToggle,
+  isRecording = false,
+  toolbarHost = null,
+  bodyPlaceholder = "",
+  showBodyPlaceholder = false,
+}: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [fontIndex, setFontIndex] = useState(0);
 
   useEffect(() => {
     const el = editorRef.current;
@@ -63,14 +73,6 @@ export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: 
       document.execCommand("underline", false);
     });
 
-  const onFontCycle = () =>
-    run(() => {
-      const next = (fontIndex + 1) % FONTS.length;
-      document.execCommand("styleWithCSS", false, "true");
-      document.execCommand("fontName", false, FONTS[next].fontName);
-      setFontIndex(next);
-    });
-
   const onInput = () => {
     pushChange();
   };
@@ -81,7 +83,7 @@ export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: 
     });
     return (
       <div
-        className="outline-box rich-editor rich-editor--readonly"
+        className={`${embedded ? "" : "outline-box "}rich-editor rich-editor--readonly`}
         style={{
           flex: 1,
           minHeight: "min(60vh, 520px)",
@@ -103,19 +105,18 @@ export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: 
     );
   }
 
-  return (
-    <div className="rich-editor" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      <div
-        className="outline-box rich-editor__toolbar"
-        style={{
-          alignSelf: "flex-start",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "0.35rem",
-          padding: "0.35rem 0.45rem",
-          marginBottom: "0.65rem",
-        }}
-      >
+  const toolbar = (
+    <div
+      className={`${embedded ? "" : "outline-box "}rich-editor__toolbar`}
+      style={{
+        alignSelf: "flex-start",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "0.35rem",
+        padding: "0.35rem 0.45rem",
+        marginBottom: "0.65rem",
+      }}
+    >
         <button
           type="button"
           className="btn-outline"
@@ -125,16 +126,6 @@ export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: 
           onClick={onBold}
         >
           B
-        </button>
-        <button
-          type="button"
-          className="btn-outline"
-          aria-label="Italic"
-          title="Italic"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onItalic}
-        >
-          I
         </button>
         <button
           type="button"
@@ -149,19 +140,47 @@ export function RichEditor({ initialHtml, onDraftChange, readOnly, editorKey }: 
         <button
           type="button"
           className="btn-outline"
-          aria-label={`Font: ${FONTS[fontIndex].label}. Click to use next font.`}
-          title={`Font: ${FONTS[fontIndex].label} (click to cycle)`}
+          aria-label="Italic"
+          title="Italic"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={onFontCycle}
+          onClick={onItalic}
         >
-          {FONTS[fontIndex].label}
+          I
+        </button>
+        <button
+          type="button"
+          className="btn-outline"
+          aria-label={isRecording ? "Stop recording voice memo" : "Record voice memo"}
+          title={isRecording ? "Stop recording voice memo" : "Record voice memo"}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onMicToggle?.()}
+        >
+          {isRecording ? (
+            "■"
+          ) : (
+            <span className="rich-editor__mic-icon" aria-hidden>
+              <svg viewBox="0 0 24 24" width="16" height="16" focusable="false">
+                <path
+                  d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zm-7 8a1 1 0 1 1 2 0a5 5 0 0 0 10 0a1 1 0 1 1 2 0a7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-3.08A7 7 0 0 1 5 11z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          )}
         </button>
       </div>
+  );
+
+  return (
+    <div className="rich-editor" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      {toolbarHost ? createPortal(toolbar, toolbarHost) : toolbar}
 
       <div
         key={editorKey}
         ref={editorRef}
-        className="outline-box rich-editor__body"
+        className={`${embedded ? "" : "outline-box "}rich-editor__body`}
+        data-placeholder={bodyPlaceholder}
+        data-show-placeholder={showBodyPlaceholder ? "true" : "false"}
         contentEditable
         suppressContentEditableWarning
         onInput={onInput}

@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { calendarDateInTimeZone } from "../lib/dates";
 import { useAuth } from "../contexts/AuthContext";
 import { getPromptForDay } from "../data/writingPrompts";
+import { getEntryPreview, hasMeaningfulJournalEntry } from "../lib/journalEntry";
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -17,6 +18,22 @@ function daysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
+function formatRecentDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(y, m - 1, d));
+}
+
+type EntryRow = {
+  entry_date: string;
+  title: string | null;
+  body: string | null;
+  audio_storage_path: string | null;
+};
+
 export function CalendarPage() {
   const { user, profile, loading, signOut } = useAuth();
   const tz = profile?.timezone ?? "UTC";
@@ -24,6 +41,7 @@ export function CalendarPage() {
 
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [withEntry, setWithEntry] = useState<Set<string>>(new Set());
+  const [recentEntries, setRecentEntries] = useState<EntryRow[]>([]);
 
   const year = cursor.getFullYear();
   const monthIndex = cursor.getMonth();
@@ -36,7 +54,7 @@ export function CalendarPage() {
 
     const { data, error } = await supabase
       .from("journal_entries")
-      .select("entry_date")
+      .select("entry_date, title, body, audio_storage_path")
       .eq("user_id", user.id)
       .gte("entry_date", start)
       .lte("entry_date", end);
@@ -44,7 +62,17 @@ export function CalendarPage() {
     if (error) return;
     const next = new Set<string>();
     for (const row of data ?? []) {
-      if (row.entry_date) next.add(row.entry_date as string);
+      const typed = row as unknown as EntryRow;
+      if (
+        typed.entry_date &&
+        hasMeaningfulJournalEntry({
+          title: typed.title,
+          bodyHtml: typed.body,
+          audioPath: typed.audio_storage_path,
+        })
+      ) {
+        next.add(typed.entry_date);
+      }
     }
     setWithEntry(next);
   }, [user, year, monthIndex]);
@@ -57,6 +85,32 @@ export function CalendarPage() {
     () => (user?.id ? getPromptForDay(todayStr, user.id) : ""),
     [todayStr, user?.id],
   );
+
+  const loadRecentEntries = useCallback(async () => {
+    if (!user || !supabase) return;
+    const { data, error } = await supabase
+      .from("journal_entries")
+      .select("entry_date, title, body, audio_storage_path")
+      .eq("user_id", user.id)
+      .order("entry_date", { ascending: false })
+      .limit(6);
+
+    if (error) return;
+    const normalized = (data ?? [])
+      .map((row) => row as unknown as EntryRow)
+      .filter((row) =>
+        hasMeaningfulJournalEntry({
+          title: row.title,
+          bodyHtml: row.body,
+          audioPath: row.audio_storage_path,
+        }),
+      );
+    setRecentEntries(normalized);
+  }, [user]);
+
+  useEffect(() => {
+    void loadRecentEntries();
+  }, [loadRecentEntries]);
 
   const grid = useMemo(() => {
     const firstDow = new Date(year, monthIndex, 1).getDay();
@@ -105,6 +159,7 @@ export function CalendarPage() {
               to={`/journal/${todayStr}`}
               className="btn-primary"
               style={{ display: "inline-block", textDecoration: "none", textAlign: "center" }}
+              state={{ promptAsTitle: todaysPrompt }}
             >
               I&apos;ll bite
             </Link>
@@ -184,6 +239,26 @@ export function CalendarPage() {
             </div>
           </div>
         </div>
+
+        {recentEntries.length > 0 ? (
+          <section style={{ marginTop: "0.9rem" }}>
+            <p className="muted" style={{ margin: "0 0 0.55rem", fontSize: "0.75rem", letterSpacing: "0.03em" }}>
+              Recent entries
+            </p>
+            {recentEntries.map((entry) => (
+              <Link
+                key={entry.entry_date}
+                to={`/journal/${entry.entry_date}`}
+                className="info-banner calendar-recent-card"
+                style={{ display: "block", textDecoration: "none", color: "inherit" }}
+              >
+                <p className="calendar-recent-card__date">{formatRecentDate(entry.entry_date)}</p>
+                <p className="calendar-recent-card__title">{entry.title?.trim() || "Untitled"}</p>
+                <p className="calendar-recent-card__preview">{getEntryPreview(entry.body, 150) || "No text in entry."}</p>
+              </Link>
+            ))}
+          </section>
+        ) : null}
       </main>
     </div>
   );

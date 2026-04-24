@@ -17,3 +17,8 @@ export function getAppOrigin(): string {
 export function getEmailConfirmationRedirectUrl(): string {
   return `${getAppOrigin()}/auth`;
 }
+
+/** Password recovery links open here so users can set a new password. */
+export function getPasswordResetRedirectUrl(): string {
+  return `${getAppOrigin()}/reset-password`;
+}

@@ -1,7 +1,11 @@
 import { FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase, supabaseConfigured } from "../lib/supabase";
-import { getAppOrigin, getEmailConfirmationRedirectUrl } from "../lib/authRedirect";
+import {
+  getAppOrigin,
+  getEmailConfirmationRedirectUrl,
+  getPasswordResetRedirectUrl,
+} from "../lib/authRedirect";
 import { useAuth } from "../contexts/AuthContext";
 
 function errorMessage(err: unknown): string {
@@ -97,6 +101,30 @@ export function AuthPage() {
     }
   }
 
+  async function onForgotPassword() {
+    if (!supabase) return;
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setError("Enter your email first.");
+      return;
+    }
+
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: getPasswordResetRedirectUrl(),
+      });
+      if (err) throw err;
+      setInfo("Reset link sent. Check your inbox and open the link on this device.");
+    } catch (err: unknown) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="app-shell" style={{ maxWidth: 420 }}>
       <header className="app-header">
@@ -107,7 +135,7 @@ export function AuthPage() {
           {mode === "signin" ? "Sign in" : "Create account"}
         </h1>
         <p className="muted" style={{ marginBottom: "1.25rem" }}>
-          One private entry per day. Past days are read-only.
+          Let your words take the lead.
         </p>
         {info ? <div className="info-banner">{info}</div> : null}
         {error ? <div className="error-banner">{error}</div> : null}
@@ -174,6 +202,13 @@ export function AuthPage() {
             </>
           )}
         </p>
+        {mode === "signin" ? (
+          <p style={{ marginTop: "0.4rem", fontSize: "0.85rem" }}>
+            <button type="button" className="link-quiet" onClick={() => void onForgotPassword()} disabled={busy}>
+              Forgot password?
+            </button>
+          </p>
+        ) : null}
       </main>
     </div>
   );

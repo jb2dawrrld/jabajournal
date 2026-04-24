@@ -47,9 +47,9 @@ export function OnboardingPage() {
         </h1>
         <div className="outline-box" style={{ padding: "1.1rem", marginBottom: "1rem" }}>
           <p style={{ margin: 0, lineHeight: 1.55, fontSize: "0.92rem" }}>
-            jabajournal gives you <strong>one journal entry per calendar day</strong>. You can edit
-            today&apos;s entry freely; when the day ends, it becomes read-only. Open the calendar,
-            pick a date, and write with a minimal set of formatting tools—nothing extra in your way.
+            jabajournal: the ideal home <strong>for your thoughts</strong>. Open the
+            calendar, choose any day, and write what matters. No multiple fonts, no collages, no <strong>distractions</strong> - just let
+            your words take the lead.
           </p>
         </div>
         {error ? <div className="error-banner">{error}</div> : null}

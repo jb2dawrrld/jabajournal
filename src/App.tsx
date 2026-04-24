@@ -4,6 +4,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { JournalPage } from "./pages/JournalPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 function HomeRedirect() {
   const { session, profile, loading } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/calendar" element={<CalendarPage />} />
       <Route path="/journal/:date" element={<JournalPage />} />
