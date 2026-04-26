@@ -12,7 +12,7 @@ function HomeRedirect() {
   if (loading) {
     return (
       <div className="app-shell">
-        <p className="muted">Loading…</p>
+        <p className="muted">Loading...</p>
       </div>
     );
   }

@@ -15,22 +15,25 @@ function errorMessage(err: unknown): string {
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
+  const hasRecoveryIntent =
+    typeof window !== "undefined" &&
+    (window.location.hash.includes("type=recovery") || window.location.hash.includes("type=signup"));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  if (!loading && !session) {
+  if (!loading && (!session || !hasRecoveryIntent)) {
     return (
-      <div className="app-shell" style={{ maxWidth: 420 }}>
+      <div className="app-shell app-shell--narrow">
         <header className="app-header">
           <span className="app-header__brand">jabajournal</span>
         </header>
-        <main className="app-main">
-          <h1 style={{ fontSize: "1.1rem", fontWeight: 500, marginBottom: "0.6rem" }}>Reset password</h1>
+        <main className="app-main page-stack">
+          <h1 className="page-title">Reset password</h1>
           <div className="info-banner">This recovery link is missing or expired. Request a new one from sign in.</div>
-          <p style={{ marginTop: "1rem" }}>
+          <p className="page-copy">
             <Link to="/auth" className="link-quiet">
               Back to sign in
             </Link>
@@ -73,24 +76,22 @@ export function ResetPasswordPage() {
   if (loading) {
     return (
       <div className="app-shell">
-        <p className="muted">Loading…</p>
+        <p className="muted">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="app-shell" style={{ maxWidth: 420 }}>
+    <div className="app-shell app-shell--narrow">
       <header className="app-header">
         <span className="app-header__brand">jabajournal</span>
       </header>
-      <main className="app-main">
-        <h1 style={{ fontSize: "1.1rem", fontWeight: 500, marginBottom: "0.5rem" }}>Choose a new password</h1>
+      <main className="app-main page-stack">
+        <h1 className="page-title">Choose a new password</h1>
         {info ? <div className="info-banner">{info}</div> : null}
         {error ? <div className="error-banner">{error}</div> : null}
-        <form onSubmit={onSubmit} className="outline-box" style={{ padding: "1rem" }}>
-          <label className="muted" style={{ display: "block", marginBottom: "0.35rem" }}>
-            New password
-          </label>
+        <form onSubmit={onSubmit} className="outline-box form-card">
+          <label className="muted form-label">New password</label>
           <input
             className="field auth-input"
             type="password"
@@ -101,9 +102,7 @@ export function ResetPasswordPage() {
             minLength={6}
             style={{ marginBottom: "0.85rem" }}
           />
-          <label className="muted" style={{ display: "block", marginBottom: "0.35rem" }}>
-            Confirm new password
-          </label>
+          <label className="muted form-label">Confirm new password</label>
           <input
             className="field auth-input"
             type="password"
@@ -114,8 +113,8 @@ export function ResetPasswordPage() {
             minLength={6}
             style={{ marginBottom: "1rem" }}
           />
-          <button type="submit" className="btn-primary" disabled={busy} style={{ width: "100%" }}>
-            {busy ? "Updating…" : "Update password"}
+          <button type="submit" className="btn-primary btn-block" disabled={busy}>
+            {busy ? "Updating..." : "Update password"}
           </button>
         </form>
       </main>

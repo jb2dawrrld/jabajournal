@@ -17,6 +17,18 @@ function errorMessage(err: unknown): string {
   return "Something went wrong";
 }
 
+function genericAuthError(action: "signup" | "signin" | "forgot" | "resend") {
+  if (action === "signin") return "Could not sign in. Check your email and password and try again.";
+  if (action === "signup") return "Could not create account. Please try again.";
+  if (action === "forgot") return "Could not send reset link. Please try again.";
+  return "Could not resend verification email. Please try again.";
+}
+
+function isLocalEnvironment() {
+  const origin = getAppOrigin();
+  return origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+}
+
 export function AuthPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
@@ -26,21 +38,37 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /** After instant sign-up (no email step), show success copy before leaving /auth. */
+  const [resendBusy, setResendBusy] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [holdAuthRedirect, setHoldAuthRedirect] = useState(false);
 
   if (!supabaseConfigured) {
+    const localEnvironment = isLocalEnvironment();
+
     return (
-      <div className="app-shell">
-        <p className="muted">
-          Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>{" "}
-          in <code>.env</code> at the project root, then restart <code>npm run tauri dev</code>{" "}
-          (Vite only reads env on startup).
-        </p>
-        <p className="muted" style={{ marginTop: "0.75rem" }}>
-          Use the <strong>Project URL</strong> and <strong>anon public</strong> key from Supabase →
-          Project Settings → API (the long <code>eyJ…</code> JWT is the usual anon key).
-        </p>
+      <div className="app-shell app-shell--narrow">
+        <main className="app-main page-stack">
+          <div className="info-banner">
+            {localEnvironment ? (
+              <>
+                Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in
+                <code> .env </code>
+                at the project root, then restart the local dev server. Vite only reads env vars on
+                startup.
+              </>
+            ) : (
+              <>
+                This deployment is missing <code>VITE_SUPABASE_URL</code> and/or
+                <code> VITE_SUPABASE_ANON_KEY</code>. Set them in the hosting environment and redeploy
+                the app.
+              </>
+            )}
+          </div>
+          <p className="muted page-copy page-copy--tight">
+            Use the <strong>Project URL</strong> and <strong>anon public</strong> key from Supabase{" "}
+            {" > "}Project Settings{" > "}API.
+          </p>
+        </main>
       </div>
     );
   }
@@ -57,9 +85,10 @@ export function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        const targetEmail = email.trim().toLowerCase();
         const emailRedirectTo = getEmailConfirmationRedirectUrl();
         const { data, error: err } = await supabase.auth.signUp({
-          email,
+          email: targetEmail,
           password,
           options: {
             emailRedirectTo,
@@ -70,17 +99,18 @@ export function AuthPage() {
         const needsEmailConfirm = Boolean(data.user && !data.session);
 
         if (needsEmailConfirm) {
+          setPendingVerificationEmail(targetEmail);
           setInfo(
             `Check your email for a confirmation link. After you click it, this app will open at ${getAppOrigin()} and you can sign in with the same email and password. ` +
-              "If no email arrives, check spam. In Supabase: Authentication → URL Configuration — set Site URL to " +
-              `${getAppOrigin()} and add ${getAppOrigin()}/** under Redirect URLs (see README).`,
+              "If no email arrives, check spam.",
           );
           return;
         }
 
         if (data.session) {
+          setPendingVerificationEmail(null);
           setHoldAuthRedirect(true);
-          setInfo("Account created — taking you to the app…");
+          setInfo("Account created - taking you to the app...");
           window.setTimeout(() => {
             setHoldAuthRedirect(false);
             navigate("/", { replace: true });
@@ -89,15 +119,43 @@ export function AuthPage() {
         }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim().toLowerCase(),
           password,
         });
         if (err) throw err;
       }
     } catch (err: unknown) {
-      setError(errorMessage(err));
+      console.error("auth submit failed:", errorMessage(err));
+      setError(genericAuthError(mode === "signup" ? "signup" : "signin"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onResendVerification() {
+    if (!supabase) return;
+    const targetEmail = (pendingVerificationEmail ?? email).trim().toLowerCase();
+    if (!targetEmail) {
+      setError("Enter your email first.");
+      return;
+    }
+    setError(null);
+    setInfo(null);
+    setResendBusy(true);
+    try {
+      const { error: err } = await supabase.auth.resend({
+        type: "signup",
+        email: targetEmail,
+        options: { emailRedirectTo: getEmailConfirmationRedirectUrl() },
+      });
+      if (err) throw err;
+      setPendingVerificationEmail(targetEmail);
+      setInfo("Verification email resent. Check your inbox and spam folder.");
+    } catch (err: unknown) {
+      console.error("resend verification failed:", errorMessage(err));
+      setError(genericAuthError("resend"));
+    } finally {
+      setResendBusy(false);
     }
   }
 
@@ -119,30 +177,32 @@ export function AuthPage() {
       if (err) throw err;
       setInfo("Reset link sent. Check your inbox and open the link on this device.");
     } catch (err: unknown) {
-      setError(errorMessage(err));
+      console.error("forgot password failed:", errorMessage(err));
+      setError(genericAuthError("forgot"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="app-shell" style={{ maxWidth: 420 }}>
+    <div className="app-shell app-shell--narrow">
       <header className="app-header">
         <span className="app-header__brand">jabajournal</span>
       </header>
-      <main className="app-main">
-        <h1 style={{ fontSize: "1.1rem", fontWeight: 500, marginBottom: "0.5rem" }}>
-          {mode === "signin" ? "Sign in" : "Create account"}
-        </h1>
-        <p className="muted" style={{ marginBottom: "1.25rem" }}>
-          Let your words take the lead.
-        </p>
+      <main className="app-main page-stack">
+        <h1 className="page-title">{mode === "signin" ? "Sign in" : "Create account"}</h1>
+        <p className="muted page-copy page-copy--tight">And let your words take the lead.</p>
         {info ? <div className="info-banner">{info}</div> : null}
+        {mode === "signup" && pendingVerificationEmail ? (
+          <p className="page-copy page-copy--compact">
+            <button type="button" className="link-quiet" onClick={() => void onResendVerification()} disabled={busy || resendBusy}>
+              {resendBusy ? "Sending..." : "Resend verification email"}
+            </button>
+          </p>
+        ) : null}
         {error ? <div className="error-banner">{error}</div> : null}
-        <form onSubmit={onSubmit} className="outline-box" style={{ padding: "1rem" }}>
-          <label className="muted" style={{ display: "block", marginBottom: "0.35rem" }}>
-            Email
-          </label>
+        <form onSubmit={onSubmit} className="outline-box form-card">
+          <label className="muted form-label">Email</label>
           <input
             className="field auth-input"
             type="email"
@@ -152,9 +212,7 @@ export function AuthPage() {
             required
             style={{ marginBottom: "0.85rem" }}
           />
-          <label className="muted" style={{ display: "block", marginBottom: "0.35rem" }}>
-            Password
-          </label>
+          <label className="muted form-label">Password</label>
           <input
             className="field auth-input"
             type="password"
@@ -165,11 +223,11 @@ export function AuthPage() {
             minLength={6}
             style={{ marginBottom: "1rem" }}
           />
-          <button type="submit" className="btn-primary" disabled={busy} style={{ width: "100%" }}>
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+          <button type="submit" className="btn-primary btn-block" disabled={busy}>
+            {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Sign up"}
           </button>
         </form>
-        <p style={{ marginTop: "1rem", fontSize: "0.85rem" }}>
+        <p className="page-copy page-copy--tight">
           {mode === "signin" ? (
             <>
               No account?{" "}
@@ -203,7 +261,7 @@ export function AuthPage() {
           )}
         </p>
         {mode === "signin" ? (
-          <p style={{ marginTop: "0.4rem", fontSize: "0.85rem" }}>
+          <p className="page-copy page-copy--compact">
             <button type="button" className="link-quiet" onClick={() => void onForgotPassword()} disabled={busy}>
               Forgot password?
             </button>

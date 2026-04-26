@@ -65,6 +65,10 @@ async function ensureProfile(userId: string): Promise<Profile | null> {
   return fetchProfile(userId);
 }
 
+async function ensureProfileWithTimeout(userId: string, label: string): Promise<Profile | null> {
+  return withTimeout(ensureProfile(userId), 5000, label);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -79,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const tz =
       Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
-    const p = await ensureProfile(u.id);
+    const p = await ensureProfileWithTimeout(u.id, "refreshProfile");
     if (p && p.timezone === "UTC" && tz !== "UTC") {
       await supabase.from("profiles").update({ timezone: tz }).eq("id", u.id);
       setProfile({ ...p, timezone: tz });
@@ -103,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(data.session ?? null);
         if (data.session?.user) {
           try {
-            const p = await ensureProfile(data.session.user.id);
+            const p = await ensureProfileWithTimeout(data.session.user.id, "bootstrapProfile");
             const tz =
               Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
             if (p && p.timezone === "UTC" && tz !== "UTC") {
@@ -139,14 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      // Keep routing decisions gated until we either get profile data or fail safely.
-      setLoading(true);
+      const shouldGateRouting = event === "SIGNED_IN" || event === "USER_UPDATED";
+      if (shouldGateRouting) {
+        // Gate routing for events that can materially change profile-dependent flow.
+        setLoading(true);
+      }
       try {
-        await withTimeout(refreshProfile(), 8000, `refreshProfile(${event})`);
+        await withTimeout(refreshProfile(), 5000, `refreshProfile(${event})`);
       } catch {
         setProfile(null);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && shouldGateRouting) setLoading(false);
       }
     });
 

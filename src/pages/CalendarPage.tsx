@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { calendarDateInTimeZone } from "../lib/dates";
@@ -42,39 +42,52 @@ export function CalendarPage() {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [withEntry, setWithEntry] = useState<Set<string>>(new Set());
   const [recentEntries, setRecentEntries] = useState<EntryRow[]>([]);
+  const [monthLoading, setMonthLoading] = useState(false);
+  const [recentLoading, setRecentLoading] = useState(false);
+  const dotsRequestRef = useRef(0);
+  const recentRequestRef = useRef(0);
 
   const year = cursor.getFullYear();
   const monthIndex = cursor.getMonth();
 
   const loadDots = useCallback(async () => {
     if (!user || !supabase) return;
+    const requestSeq = ++dotsRequestRef.current;
+    setMonthLoading(true);
     const start = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
     const lastDay = daysInMonth(year, monthIndex);
     const end = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .select("entry_date, title, body, audio_storage_path")
-      .eq("user_id", user.id)
-      .gte("entry_date", start)
-      .lte("entry_date", end);
+    try {
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .select("entry_date, title, body, audio_storage_path")
+        .eq("user_id", user.id)
+        .gte("entry_date", start)
+        .lte("entry_date", end);
 
-    if (error) return;
-    const next = new Set<string>();
-    for (const row of data ?? []) {
-      const typed = row as unknown as EntryRow;
-      if (
-        typed.entry_date &&
-        hasMeaningfulJournalEntry({
-          title: typed.title,
-          bodyHtml: typed.body,
-          audioPath: typed.audio_storage_path,
-        })
-      ) {
-        next.add(typed.entry_date);
+      if (!error) {
+        if (requestSeq !== dotsRequestRef.current) return;
+        const next = new Set<string>();
+        for (const row of data ?? []) {
+          const typed = row as unknown as EntryRow;
+          if (
+            typed.entry_date &&
+            hasMeaningfulJournalEntry({
+              title: typed.title,
+              bodyHtml: typed.body,
+              audioPath: typed.audio_storage_path,
+            })
+          ) {
+            next.add(typed.entry_date);
+          }
+        }
+        setWithEntry(next);
       }
+    } finally {
+      if (requestSeq !== dotsRequestRef.current) return;
+      setMonthLoading(false);
     }
-    setWithEntry(next);
   }, [user, year, monthIndex]);
 
   useEffect(() => {
@@ -88,25 +101,40 @@ export function CalendarPage() {
 
   const loadRecentEntries = useCallback(async () => {
     if (!user || !supabase) return;
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .select("entry_date, title, body, audio_storage_path")
-      .eq("user_id", user.id)
-      .order("entry_date", { ascending: false })
-      .limit(6);
+    const requestSeq = ++recentRequestRef.current;
+    setRecentLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .select("entry_date, title, body, audio_storage_path")
+        .eq("user_id", user.id)
+        .order("entry_date", { ascending: false })
+        .limit(6);
 
-    if (error) return;
-    const normalized = (data ?? [])
-      .map((row) => row as unknown as EntryRow)
-      .filter((row) =>
-        hasMeaningfulJournalEntry({
-          title: row.title,
-          bodyHtml: row.body,
-          audioPath: row.audio_storage_path,
-        }),
-      );
-    setRecentEntries(normalized);
+      if (!error) {
+        if (requestSeq !== recentRequestRef.current) return;
+        const normalized = (data ?? [])
+          .map((row) => row as unknown as EntryRow)
+          .filter((row) =>
+            hasMeaningfulJournalEntry({
+              title: row.title,
+              bodyHtml: row.body,
+              audioPath: row.audio_storage_path,
+            }),
+          );
+        setRecentEntries(normalized);
+      }
+    } finally {
+      if (requestSeq !== recentRequestRef.current) return;
+      setRecentLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    // Prevent showing stale dots/cards across auth-user transitions.
+    setWithEntry(new Set());
+    setRecentEntries([]);
+  }, [user?.id]);
 
   useEffect(() => {
     void loadRecentEntries();
@@ -131,6 +159,10 @@ export function CalendarPage() {
 
   if (!loading && !user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (!loading && user && !profile) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (!loading && user && profile && !profile.onboarding_completed) {
@@ -174,7 +206,7 @@ export function CalendarPage() {
                 onClick={() => setCursor((c) => addMonths(c, -1))}
                 aria-label="Previous month"
               >
-                ←
+                Prev
               </button>
               <h2 className="calendar-panel__title">{label}</h2>
               <button
@@ -183,12 +215,17 @@ export function CalendarPage() {
                 onClick={() => setCursor((c) => addMonths(c, 1))}
                 aria-label="Next month"
               >
-                →
+                Next
               </button>
             </div>
           </div>
 
           <div className="calendar-panel__body">
+            {monthLoading ? (
+              <p className="muted" style={{ marginBottom: "0.7rem", fontSize: "0.78rem" }}>
+                Loading month...
+              </p>
+            ) : null}
             <div className="calendar-weekdays">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                 <div key={d}>{d}</div>
@@ -240,6 +277,11 @@ export function CalendarPage() {
           </div>
         </div>
 
+        {recentLoading ? (
+          <p className="muted" style={{ marginTop: "0.9rem", fontSize: "0.78rem" }}>
+            Loading recent entries...
+          </p>
+        ) : null}
         {recentEntries.length > 0 ? (
           <section style={{ marginTop: "0.9rem" }}>
             <p className="muted" style={{ margin: "0 0 0.55rem", fontSize: "0.75rem", letterSpacing: "0.03em" }}>

@@ -57,6 +57,7 @@ export function JournalPage() {
   const [initialHtml, setInitialHtml] = useState("");
   const [audioPath, setAudioPath] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrlLoading, setAudioUrlLoading] = useState(false);
   const [entryExists, setEntryExists] = useState(false);
   const [bodyHasText, setBodyHasText] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -78,6 +79,7 @@ export function JournalPage() {
   const entryExistsRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const loadSeqRef = useRef(0);
 
   const promptSeed = useMemo(() => {
     if (typeof location.state !== "object" || !location.state) return null;
@@ -104,6 +106,7 @@ export function JournalPage() {
 
   const loadEntry = useCallback(async () => {
     if (!valid || !user || !supabase) return;
+    const requestSeq = ++loadSeqRef.current;
     setLoadError(null);
     setLoaded(false);
     try {
@@ -114,6 +117,7 @@ export function JournalPage() {
         .eq("entry_date", date)
         .maybeSingle();
       if (error) throw error;
+      if (requestSeq !== loadSeqRef.current) return;
       const seededPrompt = promptSeed;
       const titleFromDb = (data?.title as string | null) ?? "";
       let title = titleFromDb;
@@ -152,6 +156,7 @@ export function JournalPage() {
           { onConflict: "user_id,entry_date" },
         );
         if (upsertError) throw upsertError;
+        if (requestSeq !== loadSeqRef.current) return;
         lastSavedTitleRef.current = title.trim();
         lastSavedBodyRef.current = body;
         lastSavedAudioRef.current = normalizedAudioPath;
@@ -166,6 +171,7 @@ export function JournalPage() {
         navigate(location.pathname, { replace: true, state: null });
       }
     } catch (e: unknown) {
+      if (requestSeq !== loadSeqRef.current) return;
       setLoadError(e instanceof Error ? e.message : "Could not load entry");
       setTitleValue("");
       setInitialHtml("");
@@ -181,6 +187,7 @@ export function JournalPage() {
       lastSavedAudioRef.current = "";
       entryExistsRef.current = false;
     } finally {
+      if (requestSeq !== loadSeqRef.current) return;
       setLoaded(true);
     }
   }, [date, editable, location.pathname, navigate, promptSeed, user, valid]);
@@ -315,19 +322,23 @@ export function JournalPage() {
   useEffect(() => {
     if (!supabase || !audioPath) {
       setAudioUrl(null);
+      setAudioUrlLoading(false);
       return;
     }
     const client = supabase;
 
     let cancelled = false;
     const loadAudioUrl = async () => {
+      setAudioUrlLoading(true);
       const { data, error } = await client.storage.from(AUDIO_BUCKET).createSignedUrl(audioPath, 3600);
       if (cancelled) return;
       if (error || !data?.signedUrl) {
         setAudioUrl(null);
+        setAudioUrlLoading(false);
         return;
       }
       setAudioUrl(data.signedUrl);
+      setAudioUrlLoading(false);
     };
     void loadAudioUrl();
 
@@ -452,6 +463,10 @@ export function JournalPage() {
     return <Navigate to="/auth" replace />;
   }
 
+  if (!loading && user && !profile) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   if (!loading && user && profile && !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -466,7 +481,7 @@ export function JournalPage() {
 
   let statusLine = " ";
   if (editable) {
-    if (saveState === "saving") statusLine = "Saving…";
+    if (saveState === "saving") statusLine = "Saving...";
     else if (saveMessage) statusLine = saveMessage;
     else if (saveState === "error") statusLine = "Could not save";
   }
@@ -493,7 +508,7 @@ export function JournalPage() {
       <main className="app-main" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         {loadError ? <div className="error-banner">{loadError}</div> : null}
         {!loaded ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">Loading...</p>
         ) : (
           <>
             {audioUrl ? (
@@ -506,6 +521,11 @@ export function JournalPage() {
                   {!editable ? <span className="muted">Read only</span> : null}
                 </div>
               </div>
+            ) : null}
+            {!audioUrl && audioUrlLoading ? (
+              <p className="muted" style={{ marginBottom: "0.8rem", fontSize: "0.78rem" }}>
+                Loading audio...
+              </p>
             ) : null}
             {audioError ? <div className="info-banner" style={{ marginBottom: "0.8rem" }}>{audioError}</div> : null}
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>

@@ -1,6 +1,6 @@
 /**
  * Base URL of the web UI (Vite dev: http://localhost:1420). Used for Supabase
- * email confirmation redirects. Must match Dashboard → Authentication → URL Configuration.
+ * email confirmation redirects. Must match Dashboard > Authentication > URL Configuration.
  */
 export function getAppOrigin(): string {
   const fromEnv = import.meta.env.VITE_APP_ORIGIN;
