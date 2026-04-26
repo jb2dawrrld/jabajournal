@@ -326,6 +326,22 @@ button:not(:disabled),
   outline-offset: 1px;
 }
 
+.password-checklist {
+  margin: 0 0 0.85rem;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.password-checklist li {
+  margin-bottom: 0.2rem;
+}
+
+.password-checklist li.is-valid {
+  color: #c6ead2;
+}
+
 /* Calendar panel */
 .calendar-panel {
   border-radius: var(--radius-lg);

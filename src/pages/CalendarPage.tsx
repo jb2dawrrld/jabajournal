@@ -42,7 +42,6 @@ export function CalendarPage() {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [withEntry, setWithEntry] = useState<Set<string>>(new Set());
   const [recentEntries, setRecentEntries] = useState<EntryRow[]>([]);
-  const [monthLoading, setMonthLoading] = useState(false);
   const [recentLoading, setRecentLoading] = useState(false);
   const dotsRequestRef = useRef(0);
   const recentRequestRef = useRef(0);
@@ -53,7 +52,6 @@ export function CalendarPage() {
   const loadDots = useCallback(async () => {
     if (!user || !supabase) return;
     const requestSeq = ++dotsRequestRef.current;
-    setMonthLoading(true);
     const start = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
     const lastDay = daysInMonth(year, monthIndex);
     const end = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
@@ -86,7 +84,6 @@ export function CalendarPage() {
       }
     } finally {
       if (requestSeq !== dotsRequestRef.current) return;
-      setMonthLoading(false);
     }
   }, [user, year, monthIndex]);
 
@@ -221,11 +218,6 @@ export function CalendarPage() {
           </div>
 
           <div className="calendar-panel__body">
-            {monthLoading ? (
-              <p className="muted" style={{ marginBottom: "0.7rem", fontSize: "0.78rem" }}>
-                Loading month...
-              </p>
-            ) : null}
             <div className="calendar-weekdays">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                 <div key={d}>{d}</div>

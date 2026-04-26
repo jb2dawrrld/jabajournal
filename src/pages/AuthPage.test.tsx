@@ -63,6 +63,13 @@ async function renderAuthPage({
 }
 
 describe("AuthPage", () => {
+  async function switchToSignupMode() {
+    fireEvent.click(screen.getByRole("button", { name: /create one/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /create account/i })).toBeInTheDocument();
+    });
+  }
+
   it("shows local env guidance when Supabase env vars are missing on localhost", async () => {
     await renderAuthPage({
       supabaseConfigured: false,
@@ -122,5 +129,92 @@ describe("AuthPage", () => {
       expect(screen.getByText(/could not sign in/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/user not found/i)).not.toBeInTheDocument();
+  });
+
+  it("shows password checklist in signup mode", async () => {
+    await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+    });
+    await switchToSignupMode();
+
+    expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least one uppercase letter/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least one number/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least one symbol/i)).toBeInTheDocument();
+    expect(screen.getByText(/passwords match/i)).toBeInTheDocument();
+  });
+
+  it("blocks signup when password rules are not met", async () => {
+    const { mocks } = await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+    });
+    await switchToSignupMode();
+
+    const emailInput = document.querySelector("input[type='email']") as HTMLInputElement;
+    const passwordInputs = document.querySelectorAll("input[type='password']");
+    const passwordInput = passwordInputs[0] as HTMLInputElement;
+    const confirmPasswordInput = passwordInputs[1] as HTMLInputElement;
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "weak" } });
+    fireEvent.change(confirmPasswordInput, { target: { value: "weak" } });
+
+    const signupButton = screen.getByRole("button", { name: /^sign up$/i });
+    expect(signupButton).toBeDisabled();
+    fireEvent.click(signupButton);
+    expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+
+  it("blocks signup when passwords do not match", async () => {
+    const { mocks } = await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+    });
+    await switchToSignupMode();
+
+    const emailInput = document.querySelector("input[type='email']") as HTMLInputElement;
+    const passwordInputs = document.querySelectorAll("input[type='password']");
+    const passwordInput = passwordInputs[0] as HTMLInputElement;
+    const confirmPasswordInput = passwordInputs[1] as HTMLInputElement;
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "StrongPass1!" } });
+    fireEvent.change(confirmPasswordInput, { target: { value: "StrongPass1?" } });
+
+    const signupButton = screen.getByRole("button", { name: /^sign up$/i });
+    expect(signupButton).toBeDisabled();
+    fireEvent.click(signupButton);
+    expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+
+  it("allows signup when all password requirements pass", async () => {
+    const { mocks } = await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+    });
+    mocks.signUp.mockResolvedValue({
+      data: { user: { id: "u1" }, session: null },
+      error: null,
+    });
+    await switchToSignupMode();
+
+    const emailInput = document.querySelector("input[type='email']") as HTMLInputElement;
+    const passwordInputs = document.querySelectorAll("input[type='password']");
+    const passwordInput = passwordInputs[0] as HTMLInputElement;
+    const confirmPasswordInput = passwordInputs[1] as HTMLInputElement;
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "StrongPass1!" } });
+    fireEvent.change(confirmPasswordInput, { target: { value: "StrongPass1!" } });
+
+    const signupButton = screen.getByRole("button", { name: /^sign up$/i });
+    expect(signupButton).toBeEnabled();
+    fireEvent.click(signupButton);
+
+    await waitFor(() => {
+      expect(mocks.signUp).toHaveBeenCalledTimes(1);
+    });
   });
 });

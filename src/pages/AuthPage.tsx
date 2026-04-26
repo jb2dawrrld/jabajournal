@@ -35,6 +35,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,14 +78,33 @@ export function AuthPage() {
     return <Navigate to="/" replace />;
   }
 
+  const isSignupMode = mode === "signup";
+  const passwordRules = {
+    minLength: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number: /\d/.test(password),
+    symbol: /[^A-Za-z0-9]/.test(password),
+  };
+  const confirmPasswordMatches = confirmPassword.length > 0 && confirmPassword === password;
+  const canSubmitSignup =
+    passwordRules.minLength &&
+    passwordRules.uppercase &&
+    passwordRules.number &&
+    passwordRules.symbol &&
+    confirmPasswordMatches;
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!supabase) return;
     setError(null);
     setInfo(null);
+    if (isSignupMode && !canSubmitSignup) {
+      setError("Your password does not meet the requirements.");
+      return;
+    }
     setBusy(true);
     try {
-      if (mode === "signup") {
+      if (isSignupMode) {
         const targetEmail = email.trim().toLowerCase();
         const emailRedirectTo = getEmailConfirmationRedirectUrl();
         const { data, error: err } = await supabase.auth.signUp({
@@ -126,7 +146,7 @@ export function AuthPage() {
       }
     } catch (err: unknown) {
       console.error("auth submit failed:", errorMessage(err));
-      setError(genericAuthError(mode === "signup" ? "signup" : "signin"));
+      setError(genericAuthError(isSignupMode ? "signup" : "signin"));
     } finally {
       setBusy(false);
     }
@@ -220,10 +240,32 @@ export function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={isSignupMode ? 8 : 6}
             style={{ marginBottom: "1rem" }}
           />
-          <button type="submit" className="btn-primary btn-block" disabled={busy}>
+          {isSignupMode ? (
+            <>
+              <label className="muted form-label">Confirm password</label>
+              <input
+                className="field auth-input"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                style={{ marginBottom: "0.75rem" }}
+              />
+              <ul className="password-checklist" aria-live="polite">
+                <li className={passwordRules.minLength ? "is-valid" : ""}>At least 8 characters</li>
+                <li className={passwordRules.uppercase ? "is-valid" : ""}>At least one uppercase letter</li>
+                <li className={passwordRules.number ? "is-valid" : ""}>At least one number</li>
+                <li className={passwordRules.symbol ? "is-valid" : ""}>At least one symbol</li>
+                <li className={confirmPasswordMatches ? "is-valid" : ""}>Passwords match</li>
+              </ul>
+            </>
+          ) : null}
+          <button type="submit" className="btn-primary btn-block" disabled={busy || (isSignupMode && !canSubmitSignup)}>
             {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Sign up"}
           </button>
         </form>
@@ -238,6 +280,7 @@ export function AuthPage() {
                   setMode("signup");
                   setError(null);
                   setInfo(null);
+                  setConfirmPassword("");
                 }}
               >
                 Create one
@@ -253,6 +296,7 @@ export function AuthPage() {
                   setMode("signin");
                   setError(null);
                   setInfo(null);
+                  setConfirmPassword("");
                 }}
               >
                 Sign in

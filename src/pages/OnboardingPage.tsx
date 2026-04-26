@@ -41,21 +41,19 @@ export function OnboardingPage() {
       <header className="app-header">
         <span className="app-header__brand">jabajournal</span>
       </header>
-      <main className="app-main">
-        <h1 style={{ fontSize: "1.15rem", fontWeight: 500, marginBottom: "0.75rem" }}>
-          Welcome
-        </h1>
-        <div className="outline-box" style={{ padding: "1.1rem", marginBottom: "1rem" }}>
-          <p style={{ margin: 0, lineHeight: 1.55, fontSize: "0.92rem" }}>
-            jabajournal: the ideal home <strong>for your thoughts</strong>. Open the
-            calendar, choose any day, and write what matters. No multiple fonts, no collages, no <strong>distractions</strong> - just let
-            your words take the lead.
+      <main className="app-main page-stack">
+        <h1 className="page-title">Welcome</h1>
+        <div className="outline-box content-card">
+          <p className="content-card__body">
+            jabajournal: the ideal home <strong>for your thoughts</strong>. Open the calendar,
+            choose any day, and write what matters. No multiple fonts, no collages, no{" "}
+            <strong>distractions</strong> - just let your words take the lead.
           </p>
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div className="action-row action-row--end">
           <button type="button" className="btn-primary" onClick={finish} disabled={busy}>
-            {busy ? "Saving…" : "Continue"}
+            {busy ? "Saving..." : "Continue"}
           </button>
         </div>
       </main>
