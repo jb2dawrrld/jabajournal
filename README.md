@@ -2,7 +2,7 @@
 **Let your words take the lead!!"*
 
 Jabajournal started as my personal reflection platform and has grown into a deployed, multi-user web app where users can easily and securely create, manage, and revisit journal entries.
-The experience is intentionally simple and minimalistic; no clutter, no endless customization — just you, the page, and your thoughts, free to roam.
+The experience is intentionally simple and minimalistic. No clutter, no endless customization; just you, the page, and your thoughts, free to roam.
 
 On days when users need to be inspired, the app provides a daily randomly generated prompt to help users over their creative block and get started.
 Alongside written entries, users can optionally attach audio recordings, blending traditional journaling with voice-based reflection.
