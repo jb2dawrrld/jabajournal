@@ -279,18 +279,24 @@ export function CalendarPage() {
             <p className="muted" style={{ margin: "0 0 0.55rem", fontSize: "0.75rem", letterSpacing: "0.03em" }}>
               Recent entries
             </p>
-            {recentEntries.map((entry) => (
-              <Link
-                key={entry.entry_date}
-                to={`/journal/${entry.entry_date}`}
-                className="info-banner calendar-recent-card"
-                style={{ display: "block", textDecoration: "none", color: "inherit" }}
-              >
-                <p className="calendar-recent-card__date">{formatRecentDate(entry.entry_date)}</p>
-                <p className="calendar-recent-card__title">{entry.title?.trim() || "Untitled"}</p>
-                <p className="calendar-recent-card__preview">{getEntryPreview(entry.body, 150) || "No text in entry."}</p>
-              </Link>
-            ))}
+            {recentEntries.map((entry) => {
+              const hasAudio = Boolean(entry.audio_storage_path?.trim());
+              const preview = getEntryPreview(entry.body, 150) || "No text in entry.";
+              return (
+                <Link
+                  key={entry.entry_date}
+                  to={`/journal/${entry.entry_date}`}
+                  className="info-banner calendar-recent-card"
+                  style={{ display: "block", textDecoration: "none", color: "inherit" }}
+                >
+                  <p className="calendar-recent-card__date">{formatRecentDate(entry.entry_date)}</p>
+                  <p className="calendar-recent-card__title">{entry.title?.trim() || "Untitled"}</p>
+                  <p className="calendar-recent-card__preview">
+                    {hasAudio ? `[Audio] ${preview}` : preview}
+                  </p>
+                </Link>
+              );
+            })}
           </section>
         ) : null}
       </main>

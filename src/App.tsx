@@ -1,20 +1,18 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { useAuth } from "./contexts/AuthContext";
 import { AuthPage } from "./pages/AuthPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { JournalPage } from "./pages/JournalPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 function HomeRedirect() {
   const { session, profile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="app-shell">
-        <p className="muted">Loading...</p>
-      </div>
-    );
+    return <AppLoadingScreen fullViewport />;
   }
 
   if (!session) {
@@ -33,6 +31,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/calendar" element={<CalendarPage />} />

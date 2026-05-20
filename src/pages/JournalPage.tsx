@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { supabase } from "../lib/supabase";
 import { calendarDateInTimeZone, compareDateOnly } from "../lib/dates";
 import { useAuth } from "../contexts/AuthContext";
+import { AppLoadingScreen } from "../components/AppLoadingScreen";
 import { RichEditor } from "../components/RichEditor";
 import { hasMeaningfulBody, hasMeaningfulJournalEntry } from "../lib/journalEntry";
 
@@ -508,7 +509,7 @@ export function JournalPage() {
       <main className="app-main" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         {loadError ? <div className="error-banner">{loadError}</div> : null}
         {!loaded ? (
-          <p className="muted">Loading...</p>
+          <AppLoadingScreen />
         ) : (
           <>
             {audioUrl ? (

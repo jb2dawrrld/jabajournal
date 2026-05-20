@@ -3,6 +3,10 @@
 :root {
   --bg-primary: #282828;
   --accent-current-day: #d19fa0;
+  --accent-link: #9ab5bb;
+  --accent-link-hover: #c8e3e8;
+  --link-quiet: rgba(255, 255, 255, 0.72);
+  --link-quiet-hover: #ffffff;
   --text-secondary: #ffffff;
   --bg-alt: #55595E;
   --interactive: #6f868c;
@@ -111,6 +115,28 @@ button:not(:disabled),
   text-transform: lowercase;
 }
 
+.app-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}
+
+.app-loading--viewport {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-loading__brand {
+  font-size: clamp(2.75rem, 12vw, 4.75rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
 .app-header__date {
   font-size: 0.9rem;
   font-weight: 500;
@@ -163,6 +189,39 @@ button:not(:disabled),
 
 .content-card {
   padding: 1.1rem;
+}
+
+.auth-policy-notice {
+  margin: 0 0 0.85rem;
+  line-height: 1.45;
+}
+
+.legal-prose {
+  padding: 1.1rem 1.15rem;
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}
+
+.legal-prose__section + .legal-prose__section {
+  margin-top: 1.1rem;
+}
+
+.legal-prose__heading {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.legal-prose__paragraph {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  opacity: 0.92;
+}
+
+.legal-prose__paragraph:last-child {
+  margin-bottom: 0;
 }
 
 .content-card__body {
@@ -286,8 +345,8 @@ button:not(:disabled),
   outline-offset: 2px;
 }
 
-.link-quiet {
-  color: var(--text-secondary);
+.link-quiet,
+.link-accent {
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -295,10 +354,40 @@ button:not(:disabled),
   border: none;
   font: inherit;
   padding: 0;
+  transition: color 0.18s var(--ease-out);
 }
 
-.link-quiet:hover {
-  color: var(--text-primary);
+.link-quiet {
+  color: var(--link-quiet);
+}
+
+.link-quiet:hover:not(:disabled) {
+  color: var(--link-quiet-hover);
+}
+
+.link-quiet:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.link-accent {
+  color: var(--accent-link);
+}
+
+.link-accent:hover:not(:disabled) {
+  color: var(--accent-link-hover);
+}
+
+.link-accent:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+a.link-quiet,
+a.link-accent {
+  text-decoration: underline;
 }
 
 .field {

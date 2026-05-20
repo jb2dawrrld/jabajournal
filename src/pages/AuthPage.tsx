@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import {
   getAppOrigin,
@@ -265,6 +265,15 @@ export function AuthPage() {
               </ul>
             </>
           ) : null}
+          {isSignupMode ? (
+            <p className="page-copy page-copy--compact auth-policy-notice">
+              By creating an account, you agree to our{" "}
+              <Link to="/privacy" className="link-accent">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          ) : null}
           <button type="submit" className="btn-primary btn-block" disabled={busy || (isSignupMode && !canSubmitSignup)}>
             {busy ? "Please wait..." : mode === "signin" ? "Sign in" : "Sign up"}
           </button>
@@ -275,7 +284,7 @@ export function AuthPage() {
               No account?{" "}
               <button
                 type="button"
-                className="link-quiet"
+                className="link-accent"
                 onClick={() => {
                   setMode("signup");
                   setError(null);
@@ -291,7 +300,7 @@ export function AuthPage() {
               Already have an account?{" "}
               <button
                 type="button"
-                className="link-quiet"
+                className="link-accent"
                 onClick={() => {
                   setMode("signin");
                   setError(null);

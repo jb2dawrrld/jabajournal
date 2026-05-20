@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AppLoadingScreen } from "../components/AppLoadingScreen";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -74,11 +75,7 @@ export function ResetPasswordPage() {
   }
 
   if (loading) {
-    return (
-      <div className="app-shell">
-        <p className="muted">Loading...</p>
-      </div>
-    );
+    return <AppLoadingScreen fullViewport />;
   }
 
   return (
