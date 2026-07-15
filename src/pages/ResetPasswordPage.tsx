@@ -18,24 +18,10 @@ function errorMessage(err: unknown): string {
   return "Something went wrong";
 }
 
-function parseRecoveryHashTokens(): {
-  access_token: string;
-  refresh_token: string;
-} | null {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  if (params.get("type") !== "recovery") return null;
-  const access_token = params.get("access_token")?.trim() ?? "";
-  const refresh_token = params.get("refresh_token")?.trim() ?? "";
-  if (!access_token || !refresh_token) return null;
-  return { access_token, refresh_token };
-}
-
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
   const [recoveryOk] = useState(() => capturePasswordRecoveryIntentFromUrl());
-  const [sessionReady, setSessionReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,38 +29,22 @@ export function ResetPasswordPage() {
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    // Keep hash until auth has a session so detectSessionInUrl can consume tokens.
+    if (loading || !session || !window.location.hash) return;
+    if (
+      window.location.hash.includes("type=recovery") ||
+      window.location.hash.includes("access_token")
+    ) {
+      const url = new URL(window.location.href);
+      url.hash = "";
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  }, [loading, session]);
 
-    (async () => {
-      if (!supabase) {
-        if (!cancelled) setSessionReady(true);
-        return;
-      }
-
-      capturePasswordRecoveryIntentFromUrl();
-      const tokens = parseRecoveryHashTokens();
-      if (tokens) {
-        const { error: setErr } = await supabase.auth.setSession(tokens);
-        if (!cancelled && !setErr) {
-          const url = new URL(window.location.href);
-          url.hash = "";
-          window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-        }
-      }
-
-      if (!cancelled) setSessionReady(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const gateLoading = loading || !sessionReady;
   const canShowForm =
-    !gateLoading && Boolean(session) && (recoveryOk || hasPasswordRecoveryIntent());
+    !loading && Boolean(session) && (recoveryOk || hasPasswordRecoveryIntent());
 
-  if (gateLoading) {
+  if (loading) {
     return <AppLoadingScreen fullViewport />;
   }
 

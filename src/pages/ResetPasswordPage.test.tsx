@@ -17,11 +17,10 @@ async function renderResetPage({
     useAuth: () => authState,
   }));
 
-  const setSession = vi.fn().mockResolvedValue({ error: null });
   const updateUser = vi.fn().mockResolvedValue({ error: null });
   vi.doMock("../lib/supabase", () => ({
     supabase: {
-      auth: { updateUser, setSession },
+      auth: { updateUser },
     },
   }));
 
@@ -37,7 +36,7 @@ async function renderResetPage({
         </Routes>
       </MemoryRouter>,
     ),
-    mocks: { setSession, updateUser },
+    mocks: { updateUser },
   };
 }
 

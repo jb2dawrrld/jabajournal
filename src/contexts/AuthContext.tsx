@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, next) => {
+    } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
       if (event === "PASSWORD_RECOVERY") {
         markPasswordRecoveryIntent();
@@ -174,28 +174,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
+
       // Skip loading gate during password recovery so /reset-password is not raced.
+      const inRecovery = event === "PASSWORD_RECOVERY" || hasPasswordRecoveryIntent();
       const shouldGateRouting =
-        (event === "SIGNED_IN" || event === "USER_UPDATED") && !hasPasswordRecoveryIntent();
+        (event === "SIGNED_IN" || event === "USER_UPDATED") && !inRecovery;
       if (shouldGateRouting) {
-        // Gate routing for events that can materially change profile-dependent flow.
         setLoading(true);
       }
-      try {
-        await withTimeout(refreshProfile(), 5000, `refreshProfile(${event})`);
-      } catch (err: unknown) {
-        setProfile(null);
-        setProfileError(toErrorMessage(err, "Could not load profile"));
-      } finally {
-        if (!cancelled && shouldGateRouting) setLoading(false);
-      }
+
+      // Defer profile work: GoTrue holds the auth lock for the duration of this
+      // callback. Awaiting getUser()/setSession/DB here deadlocks with Strict Mode
+      // and detectSessionInUrl (NavigatorLockAcquireTimeoutError).
+      const userId = next.user.id;
+      window.setTimeout(() => {
+        void (async () => {
+          if (cancelled) return;
+          try {
+            const p = await applyTimezoneNudge(
+              userId,
+              await ensureProfileWithTimeout(userId, `refreshProfile(${event})`),
+            );
+            if (cancelled) return;
+            setProfile(p);
+            setProfileError(null);
+          } catch (err: unknown) {
+            if (cancelled) return;
+            setProfile(null);
+            setProfileError(toErrorMessage(err, "Could not load profile"));
+          } finally {
+            if (!cancelled && shouldGateRouting) setLoading(false);
+          }
+        })();
+      }, 0);
     });
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [refreshProfile]);
+  }, []);
 
   const signOut = useCallback(async () => {
     if (!supabase) return;

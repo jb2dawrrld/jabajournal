@@ -56,13 +56,14 @@ Already signed-in users who hit `/forgot-password` are redirected to `/`.
 
 1. `/reset-password` loads.
 2. The app **snapshots recovery intent** from the URL (`type=recovery` in the hash or query) into `sessionStorage` under `jabajournal_password_recovery`. That flag survives after the client clears the hash.
-3. If hash tokens are present, the page calls `supabase.auth.setSession({ access_token, refresh_token })`, then strips the hash from the address bar.
-4. `AuthContext` may also set the same `sessionStorage` flag when it receives a `PASSWORD_RECOVERY` auth event, and it avoids a full-screen loading gate during recovery so this page is not raced away.
-5. When auth loading is done **and** there is a session **and** recovery intent is set, the user sees **Choose a new password**.
-6. If loading finished but session or recovery intent is missing, the page shows that the link is missing or expired, with links to request a new reset or return to sign in.
-7. User enters and confirms a new password (minimum 6 characters) and submits.
-8. The app calls `supabase.auth.updateUser({ password })`.
-9. On success, recovery intent is **cleared** from `sessionStorage`, a short success message appears, then the user is sent to `/`.
+3. Recovery intent is snapshotted from the URL as early as client load (`sessionStorage`), before Supabase clears the hash.
+4. The Supabase client (`detectSessionInUrl`) establishes the recovery session from the hash; the page does **not** call `setSession` again (that raced the auth lock and could hang the loading screen).
+5. `AuthContext` also sets the recovery flag on `PASSWORD_RECOVERY`, defers profile work off the auth lock, and skips the full-screen loading gate during recovery.
+6. When auth loading is done **and** there is a session **and** recovery intent is set, the user sees **Choose a new password**. Leftover hash is stripped after the session exists.
+7. If loading finished but session or recovery intent is missing, the page shows that the link is missing or expired, with links to request a new reset or return to sign in.
+8. User enters and confirms a new password (minimum 6 characters) and submits.
+9. The app calls `supabase.auth.updateUser({ password })`.
+10. On success, recovery intent is **cleared** from `sessionStorage`, a short success message appears, then the user is sent to `/`.
 
 ## Sequence (happy path)
 
