@@ -11,7 +11,14 @@ export function AppLoadingScreen({ fullViewport = false }: Props) {
       aria-live="polite"
       aria-label="Loading"
     >
-      <span className="app-loading__brand">jabajournal</span>
+      <img
+        className="app-loading__brand"
+        src="/jabajournal-wordmark.png"
+        alt="jabajournal"
+        width={720}
+        height={479}
+        decoding="async"
+      />
     </div>
   );
 }

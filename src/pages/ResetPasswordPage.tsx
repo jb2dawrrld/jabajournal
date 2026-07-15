@@ -1,7 +1,12 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppLoadingScreen } from "../components/AppLoadingScreen";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  capturePasswordRecoveryIntentFromUrl,
+  clearPasswordRecoveryIntent,
+  hasPasswordRecoveryIntent,
+} from "../lib/passwordRecovery";
 import { supabase } from "../lib/supabase";
 
 function errorMessage(err: unknown): string {
@@ -13,19 +18,67 @@ function errorMessage(err: unknown): string {
   return "Something went wrong";
 }
 
+function parseRecoveryHashTokens(): {
+  access_token: string;
+  refresh_token: string;
+} | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  if (params.get("type") !== "recovery") return null;
+  const access_token = params.get("access_token")?.trim() ?? "";
+  const refresh_token = params.get("refresh_token")?.trim() ?? "";
+  if (!access_token || !refresh_token) return null;
+  return { access_token, refresh_token };
+}
+
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
-  const hasRecoveryIntent =
-    typeof window !== "undefined" &&
-    (window.location.hash.includes("type=recovery") || window.location.hash.includes("type=signup"));
+  const [recoveryOk] = useState(() => capturePasswordRecoveryIntentFromUrl());
+  const [sessionReady, setSessionReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  if (!loading && (!session || !hasRecoveryIntent)) {
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!supabase) {
+        if (!cancelled) setSessionReady(true);
+        return;
+      }
+
+      capturePasswordRecoveryIntentFromUrl();
+      const tokens = parseRecoveryHashTokens();
+      if (tokens) {
+        const { error: setErr } = await supabase.auth.setSession(tokens);
+        if (!cancelled && !setErr) {
+          const url = new URL(window.location.href);
+          url.hash = "";
+          window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+        }
+      }
+
+      if (!cancelled) setSessionReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const gateLoading = loading || !sessionReady;
+  const canShowForm =
+    !gateLoading && Boolean(session) && (recoveryOk || hasPasswordRecoveryIntent());
+
+  if (gateLoading) {
+    return <AppLoadingScreen fullViewport />;
+  }
+
+  if (!canShowForm) {
     return (
       <div className="app-shell app-shell--narrow">
         <header className="app-header">
@@ -35,6 +88,10 @@ export function ResetPasswordPage() {
           <h1 className="page-title">Reset password</h1>
           <div className="info-banner">This recovery link is missing or expired. Request a new one from sign in.</div>
           <p className="page-copy">
+            <Link to="/forgot-password" className="link-quiet">
+              Request a new reset link
+            </Link>
+            {" · "}
             <Link to="/auth" className="link-quiet">
               Back to sign in
             </Link>
@@ -63,6 +120,7 @@ export function ResetPasswordPage() {
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
       if (err) throw err;
+      clearPasswordRecoveryIntent();
       setInfo("Password updated. Redirecting to your journal...");
       window.setTimeout(() => {
         navigate("/", { replace: true });
@@ -72,10 +130,6 @@ export function ResetPasswordPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  if (loading) {
-    return <AppLoadingScreen fullViewport />;
   }
 
   return (
@@ -99,7 +153,7 @@ export function ResetPasswordPage() {
             minLength={6}
             style={{ marginBottom: "0.85rem" }}
           />
-          <label className="muted form-label">Confirm new password</label>
+          <label className="muted form-label">Confirm password</label>
           <input
             className="field auth-input"
             type="password"

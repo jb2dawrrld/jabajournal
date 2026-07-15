@@ -55,6 +55,8 @@ async function renderAuthPage({
       <Routes>
         <Route path="/" element={<div>home</div>} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/forgot-password" element={<div>forgot-password page</div>} />
+        <Route path="/privacy" element={<div>privacy</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -98,6 +100,18 @@ describe("AuthPage", () => {
     });
 
     expect(screen.getByText("home")).toBeInTheDocument();
+  });
+
+  it("links forgot password to the dedicated forgot-password page", async () => {
+    await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+    });
+
+    const link = screen.getByRole("link", { name: /forgot password/i });
+    expect(link).toHaveAttribute("href", "/forgot-password");
+    fireEvent.click(link);
+    expect(screen.getByText(/forgot-password page/i)).toBeInTheDocument();
   });
 
   it("renders the sign-in form when Supabase is configured", async () => {

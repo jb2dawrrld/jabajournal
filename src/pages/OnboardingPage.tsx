@@ -1,19 +1,34 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { AppLoadingScreen } from "../components/AppLoadingScreen";
+import { ProfileLoadError } from "../components/ProfileLoadError";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
 export function OnboardingPage() {
-  const { user, profile, loading, refreshProfile } = useAuth();
+  const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!loading && !user) {
+  if (loading) {
+    return <AppLoadingScreen fullViewport />;
+  }
+
+  if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!loading && profile?.onboarding_completed) {
+  if (profileError || !profile) {
+    return (
+      <ProfileLoadError
+        message={profileError ?? "Could not load your profile."}
+        onRetry={() => void refreshProfile()}
+      />
+    );
+  }
+
+  if (profile.onboarding_completed) {
     return <Navigate to="/calendar" replace />;
   }
 

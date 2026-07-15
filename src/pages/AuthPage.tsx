@@ -4,7 +4,6 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 import {
   getAppOrigin,
   getEmailConfirmationRedirectUrl,
-  getPasswordResetRedirectUrl,
 } from "../lib/authRedirect";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -17,10 +16,9 @@ function errorMessage(err: unknown): string {
   return "Something went wrong";
 }
 
-function genericAuthError(action: "signup" | "signin" | "forgot" | "resend") {
+function genericAuthError(action: "signup" | "signin" | "resend") {
   if (action === "signin") return "Could not sign in. Check your email and password and try again.";
   if (action === "signup") return "Could not create account. Please try again.";
-  if (action === "forgot") return "Could not send reset link. Please try again.";
   return "Could not resend verification email. Please try again.";
 }
 
@@ -179,31 +177,6 @@ export function AuthPage() {
     }
   }
 
-  async function onForgotPassword() {
-    if (!supabase) return;
-    const targetEmail = email.trim();
-    if (!targetEmail) {
-      setError("Enter your email first.");
-      return;
-    }
-
-    setError(null);
-    setInfo(null);
-    setBusy(true);
-    try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-        redirectTo: getPasswordResetRedirectUrl(),
-      });
-      if (err) throw err;
-      setInfo("Reset link sent. Check your inbox and open the link on this device.");
-    } catch (err: unknown) {
-      console.error("forgot password failed:", errorMessage(err));
-      setError(genericAuthError("forgot"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="app-shell app-shell--narrow">
       <header className="app-header">
@@ -315,9 +288,9 @@ export function AuthPage() {
         </p>
         {mode === "signin" ? (
           <p className="page-copy page-copy--compact">
-            <button type="button" className="link-quiet" onClick={() => void onForgotPassword()} disabled={busy}>
+            <Link to="/forgot-password" className="link-quiet">
               Forgot password?
-            </button>
+            </Link>
           </p>
         ) : null}
       </main>

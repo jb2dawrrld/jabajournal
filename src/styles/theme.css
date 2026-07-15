@@ -129,12 +129,12 @@ button:not(:disabled),
 }
 
 .app-loading__brand {
-  font-size: clamp(2.75rem, 12vw, 4.75rem);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: lowercase;
-  line-height: 1;
-  color: var(--text-primary);
+  display: block;
+  width: min(22rem, 78vw);
+  height: auto;
+  line-height: 0;
+  user-select: none;
+  pointer-events: none;
 }
 
 .app-header__date {

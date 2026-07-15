@@ -1,6 +1,6 @@
-import DOMPurify from "dompurify";
 import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { sanitizeJournalHtml } from "../lib/sanitizeHtml";
 
 type Props = {
   initialHtml: string;
@@ -32,7 +32,7 @@ export function RichEditor({
   useEffect(() => {
     const el = editorRef.current;
     if (!el || readOnly) return;
-    el.innerHTML = initialHtml || "";
+    el.innerHTML = sanitizeJournalHtml(initialHtml || "");
   }, [editorKey, initialHtml, readOnly]);
 
   const focusEditor = useCallback(() => {
@@ -41,7 +41,7 @@ export function RichEditor({
 
   const pushChange = useCallback(() => {
     if (readOnly) return;
-    const html = editorRef.current?.innerHTML ?? "";
+    const html = sanitizeJournalHtml(editorRef.current?.innerHTML ?? "");
     onDraftChange(html);
   }, [onDraftChange, readOnly]);
 
@@ -78,9 +78,7 @@ export function RichEditor({
   };
 
   if (readOnly) {
-    const safe = DOMPurify.sanitize(initialHtml || "", {
-      USE_PROFILES: { html: true },
-    });
+    const safe = sanitizeJournalHtml(initialHtml || "");
     return (
       <div
         className={`${embedded ? "" : "outline-box "}rich-editor rich-editor--readonly`}

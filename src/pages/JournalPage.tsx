@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { AppLoadingScreen } from "../components/AppLoadingScreen";
 import { RichEditor } from "../components/RichEditor";
 import { hasMeaningfulBody, hasMeaningfulJournalEntry } from "../lib/journalEntry";
+import { sanitizeJournalHtml } from "../lib/sanitizeHtml";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const AUDIO_BUCKET = "journal-audio";
@@ -46,7 +47,7 @@ export function JournalPage() {
   const { date: dateParam } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile, loading } = useAuth();
+  const { user, profile } = useAuth();
   const tz = profile?.timezone ?? "UTC";
 
   const todayStr = calendarDateInTimeZone(new Date(), tz);
@@ -126,7 +127,7 @@ export function JournalPage() {
         title = seededPrompt;
       }
       const didApplyPromptSeed = Boolean(seededPrompt && !titleFromDb.trim());
-      const body = (data?.body as string | null) ?? "";
+      const body = sanitizeJournalHtml((data?.body as string | null) ?? "");
       const nextEntryId = (data?.id as string | null) ?? "";
       const nextAudioPath = (data?.audio_storage_path as string | null) ?? "";
       const normalizedAudioPath = isValidAudioPathForUser(nextAudioPath, user.id) ? nextAudioPath : "";
@@ -146,8 +147,10 @@ export function JournalPage() {
       entryExistsRef.current = Boolean(data);
 
       if (didApplyPromptSeed && editable && supabase && user) {
+        const seedEntryId = nextEntryId || crypto.randomUUID();
         const { error: upsertError } = await supabase.from("journal_entries").upsert(
           {
+            id: seedEntryId,
             user_id: user.id,
             entry_date: date,
             title: title.trim() || null,
@@ -158,6 +161,7 @@ export function JournalPage() {
         );
         if (upsertError) throw upsertError;
         if (requestSeq !== loadSeqRef.current) return;
+        latestEntryIdRef.current = seedEntryId;
         lastSavedTitleRef.current = title.trim();
         lastSavedBodyRef.current = body;
         lastSavedAudioRef.current = normalizedAudioPath;
@@ -199,23 +203,21 @@ export function JournalPage() {
 
   const deleteEntryAndAudio = useCallback(async () => {
     if (!supabase || !user) return;
-    const { data, error } = await supabase.functions.invoke<{
+    const { error } = await supabase.functions.invoke<{
       deleted: boolean;
       removedAudio: boolean;
     }>("delete-journal-entry", {
       body: { entryDate: date },
     });
     if (error) throw error;
-    if (!data?.deleted) {
-      throw new Error("Could not delete entry");
-    }
   }, [date, user]);
 
   const persist = useCallback(async () => {
     if (!editable || !user || !supabase) return;
 
     const nextTitle = latestTitleRef.current.trim();
-    const nextBody = latestHtmlRef.current;
+    const nextBody = sanitizeJournalHtml(latestHtmlRef.current);
+    latestHtmlRef.current = nextBody;
     const nextEntryId = latestEntryIdRef.current.trim();
     const nextAudioPath = latestAudioRef.current.trim();
 
@@ -460,17 +462,16 @@ export function JournalPage() {
     navigate("/calendar");
   };
 
-  if (!loading && !user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (!loading && user && !profile) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (!loading && user && profile && !profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  const canDelete = useMemo(
+    () =>
+      entryExists ||
+      hasMeaningfulJournalEntry({
+        title: titleValue,
+        bodyHtml: latestHtmlRef.current,
+        audioPath: latestAudioRef.current,
+      }),
+    [audioPath, bodyHasText, entryExists, titleValue],
+  );
 
   if (!valid) {
     return <Navigate to="/calendar" replace />;
@@ -486,16 +487,6 @@ export function JournalPage() {
     else if (saveMessage) statusLine = saveMessage;
     else if (saveState === "error") statusLine = "Could not save";
   }
-  const canDelete = useMemo(
-    () =>
-      entryExists ||
-      hasMeaningfulJournalEntry({
-        title: titleValue,
-        bodyHtml: latestHtmlRef.current,
-        audioPath: latestAudioRef.current,
-      }),
-    [audioPath, bodyHasText, entryExists, titleValue],
-  );
 
   return (
     <div className="app-shell">
