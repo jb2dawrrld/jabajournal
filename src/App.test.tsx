@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import { RequireCompletedOnboarding } from "./components/RequireCompletedOnboarding";
+import { RequireAuth } from "./components/RequireAuth";
 
 const authState = vi.hoisted(() => ({
   current: {
@@ -11,7 +11,6 @@ const authState = vi.hoisted(() => ({
     profile: null as {
       id: string;
       timezone: string;
-      onboarding_completed: boolean;
     } | null,
     loading: false,
     profileError: null as string | null,
@@ -34,10 +33,6 @@ vi.mock("./pages/JournalPage", () => ({
 
 vi.mock("./pages/AuthPage", () => ({
   AuthPage: () => <div>auth page</div>,
-}));
-
-vi.mock("./pages/OnboardingPage", () => ({
-  OnboardingPage: () => <div>onboarding page</div>,
 }));
 
 vi.mock("./pages/PrivacyPolicyPage", () => ({
@@ -85,7 +80,7 @@ describe("App routing guards", () => {
     expect(screen.getByLabelText(/loading/i)).toBeInTheDocument();
   });
 
-  it("shows profile error with retry instead of forcing onboarding", () => {
+  it("shows profile error with retry instead of entering the app", () => {
     authState.current.session = { user: { id: "u1" } };
     authState.current.user = { id: "u1" };
     authState.current.profileError = "bootstrapProfile timed out";
@@ -95,34 +90,19 @@ describe("App routing guards", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
-  it("sends incomplete onboarding users to onboarding", async () => {
+  it("renders calendar when profile is ready", () => {
     authState.current.session = { user: { id: "u1" } };
     authState.current.user = { id: "u1" };
     authState.current.profile = {
       id: "u1",
       timezone: "UTC",
-      onboarding_completed: false,
-    };
-    renderAt("/calendar");
-    await waitFor(() => {
-      expect(screen.getByText(/onboarding page/i)).toBeInTheDocument();
-    });
-  });
-
-  it("renders calendar when onboarding is complete", () => {
-    authState.current.session = { user: { id: "u1" } };
-    authState.current.user = { id: "u1" };
-    authState.current.profile = {
-      id: "u1",
-      timezone: "UTC",
-      onboarding_completed: true,
     };
     renderAt("/calendar");
     expect(screen.getByText(/calendar page/i)).toBeInTheDocument();
   });
 });
 
-describe("RequireCompletedOnboarding", () => {
+describe("RequireAuth", () => {
   it("redirects unauthenticated users to auth", () => {
     authState.current.loading = false;
     authState.current.user = null;
@@ -132,9 +112,9 @@ describe("RequireCompletedOnboarding", () => {
           <Route
             path="/calendar"
             element={
-              <RequireCompletedOnboarding>
+              <RequireAuth>
                 <div>secret</div>
-              </RequireCompletedOnboarding>
+              </RequireAuth>
             }
           />
           <Route path="/auth" element={<div>auth page</div>} />

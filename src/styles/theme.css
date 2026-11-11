@@ -20,7 +20,7 @@
   --calendar-header-bg: #6f868c;
   --calendar-grid-bg: rgba(40, 40, 40, 0.55);
   --calendar-hover: #466e70;
-  --calendar-hover-bright: #d3eaea;
+  --calendar-hover-bright: #324f51;
   --calendar-day-border: rgba(255, 255, 255, 0.12);
   --btn-primary-bg: linear-gradient(180deg, #7a9aa1 0%, #5f828a 100%);
   --btn-primary-bg-hover: linear-gradient(180deg, #8aa8b0 0%, #6f868c 100%);
@@ -483,7 +483,6 @@ a.link-accent {
 
 .calendar-nav-btn:hover:not(:disabled) {
   background: var(--calendar-hover);
-  color: #1e2a2d;
 }
 
 .calendar-nav-btn:active:not(:disabled) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { calendarDateInTimeZone } from "../lib/dates";
 import { useAuth } from "../contexts/AuthContext";
@@ -35,7 +35,7 @@ type EntryRow = {
 };
 
 export function CalendarPage() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const tz = profile?.timezone ?? "UTC";
   const todayStr = useMemo(() => calendarDateInTimeZone(new Date(), tz), [tz]);
 
@@ -153,18 +153,6 @@ export function CalendarPage() {
     }
     return cells;
   }, [year, monthIndex]);
-
-  if (!loading && !user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (!loading && user && !profile) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (!loading && user && profile && !profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
-  }
 
   const label = new Intl.DateTimeFormat(undefined, {
     month: "long",

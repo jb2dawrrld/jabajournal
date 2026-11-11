@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import {
   getAppOrigin,
@@ -29,8 +29,11 @@ function isLocalEnvironment() {
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(() =>
+    searchParams.get("mode") === "signup" ? "signup" : "signin",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -241,7 +244,7 @@ export function AuthPage() {
           {isSignupMode ? (
             <p className="page-copy page-copy--compact auth-policy-notice">
               By creating an account, you agree to our{" "}
-              <Link to="/privacy" className="link-accent">
+              <Link to="/privacy?from=signup" className="link-accent">
                 Privacy Policy
               </Link>
               .

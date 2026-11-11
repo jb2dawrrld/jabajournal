@@ -114,6 +114,20 @@ describe("AuthPage", () => {
     expect(screen.getByText(/forgot-password page/i)).toBeInTheDocument();
   });
 
+  it("opens signup mode from mode=signup query and links privacy with from=signup", async () => {
+    await renderAuthPage({
+      supabaseConfigured: true,
+      authState: { session: null, loading: false },
+      initialPath: "/auth?mode=signup",
+    });
+
+    expect(screen.getByRole("heading", { name: /create account/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /privacy policy/i })).toHaveAttribute(
+      "href",
+      "/privacy?from=signup",
+    );
+  });
+
   it("renders the sign-in form when Supabase is configured", async () => {
     await renderAuthPage({
       supabaseConfigured: true,

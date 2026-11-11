@@ -79,7 +79,7 @@ describe("AuthProvider", () => {
       select: () => ({
         eq: () => ({
           maybeSingle: async () => ({
-            data: { id: "u1", timezone: "America/Chicago", onboarding_completed: true },
+            data: { id: "u1", timezone: "America/Chicago" },
             error: null,
           }),
         }),

@@ -4,8 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { AppLoadingScreen } from "./AppLoadingScreen";
 import { ProfileLoadError } from "./ProfileLoadError";
 
-/** Gates calendar/journal routes: auth bootstrap, session, profile, onboarding. */
-export function RequireCompletedOnboarding({ children }: { children: ReactNode }) {
+/** Gates calendar/journal routes: auth bootstrap, session, and profile. */
+export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, profile, loading, profileError, refreshProfile } = useAuth();
 
   if (loading) {
@@ -23,10 +23,6 @@ export function RequireCompletedOnboarding({ children }: { children: ReactNode }
         onRetry={() => void refreshProfile()}
       />
     );
-  }
-
-  if (!profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   return children;

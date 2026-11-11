@@ -1,14 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLoadingScreen } from "./components/AppLoadingScreen";
 import { ProfileLoadError } from "./components/ProfileLoadError";
-import { RequireCompletedOnboarding } from "./components/RequireCompletedOnboarding";
+import { RequireAuth } from "./components/RequireAuth";
 import { useAuth } from "./contexts/AuthContext";
 import { AuthPage } from "./pages/AuthPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ForgotPasswordSentPage } from "./pages/ForgotPasswordSentPage";
 import { JournalPage } from "./pages/JournalPage";
-import { OnboardingPage } from "./pages/OnboardingPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
@@ -32,10 +31,6 @@ function HomeRedirect() {
     );
   }
 
-  if (!profile.onboarding_completed) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
   return <Navigate to="/calendar" replace />;
 }
 
@@ -48,21 +43,20 @@ export default function App() {
       <Route path="/forgot-password/sent" element={<ForgotPasswordSentPage />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
       <Route
         path="/calendar"
         element={
-          <RequireCompletedOnboarding>
+          <RequireAuth>
             <CalendarPage />
-          </RequireCompletedOnboarding>
+          </RequireAuth>
         }
       />
       <Route
         path="/journal/:date"
         element={
-          <RequireCompletedOnboarding>
+          <RequireAuth>
             <JournalPage />
-          </RequireCompletedOnboarding>
+          </RequireAuth>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

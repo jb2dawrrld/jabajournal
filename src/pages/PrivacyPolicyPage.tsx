@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   PRIVACY_CONTACT_EMAIL,
   PRIVACY_POLICY_LAST_UPDATED,
@@ -6,11 +6,15 @@ import {
 } from "../content/privacyPolicy";
 
 export function PrivacyPolicyPage() {
+  const [searchParams] = useSearchParams();
+  const backTo =
+    searchParams.get("from") === "signup" ? "/auth?mode=signup" : "/auth";
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <span className="app-header__brand">jabajournal</span>
-        <Link to="/auth" className="link-quiet" style={{ fontSize: "0.85rem" }}>
+        <Link to={backTo} className="link-quiet" style={{ fontSize: "0.85rem" }}>
           Back
         </Link>
       </header>

@@ -8,11 +8,9 @@ const authState = vi.hoisted(() => ({
     profile: {
       id: "u1",
       timezone: "UTC",
-      onboarding_completed: true,
     } as {
       id: string;
       timezone: string;
-      onboarding_completed: boolean;
     } | null,
     loading: false,
     profileError: null as string | null,
@@ -61,7 +59,7 @@ describe("JournalPage", () => {
   beforeEach(() => {
     authState.current = {
       user: { id: "u1" },
-      profile: { id: "u1", timezone: "UTC", onboarding_completed: true },
+      profile: { id: "u1", timezone: "UTC" },
       loading: false,
       profileError: null,
       refreshProfile: vi.fn(),

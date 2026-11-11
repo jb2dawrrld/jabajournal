@@ -13,7 +13,7 @@ export const privacyPolicySections: { title: string; paragraphs: string[] }[] = 
     title: "Information we collect",
     paragraphs: [
       "Account information: your email address and password (stored and handled by our authentication provider). We do not store your password in plain text.",
-      "Profile information: your timezone preference and whether you have finished onboarding.",
+      "Profile information: your timezone preference.",
       "Journal content: entry dates, titles, written entries (including formatted text), and optional voice recordings you attach to an entry.",
       "Technical data: basic service logs needed to operate the app (for example, error and security events). We do not use third-party advertising or analytics trackers in the app.",
     ],

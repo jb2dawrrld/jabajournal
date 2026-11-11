@@ -14,7 +14,6 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 export type Profile = {
   id: string;
   timezone: string;
-  onboarding_completed: boolean;
 };
 
 type AuthState = {
@@ -56,7 +55,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, timezone, onboarding_completed")
+    .select("id, timezone")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;
